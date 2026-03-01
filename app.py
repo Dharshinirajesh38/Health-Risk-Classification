@@ -236,30 +236,65 @@ label { color: var(--muted) !important; font-size: 12px !important; }
 
 /* ── Inputs & selects ── */
 /* ── Aggressive Dropdown Menu (Popover) Overrides ── */
-[data-baseweb="popover"],
+[data-baseweb="popover"] > div,
 [data-baseweb="menu"],
 div[role="listbox"],
 ul[role="listbox"] {
-    background-color: var(--surface) !important;
-    border: 1px solid var(--border) !important;
+    background-color: #1a1d27 !important;
+    border: 1px solid #252a3a !important;
 }
 
 [data-baseweb="menu"] li,
 div[role="listbox"] li,
-ul[role="listbox"] li {
-    color: var(--text) !important;
+ul[role="listbox"] li,
+ul[role="listbox"] li span,
+div[role="listbox"] li span {
+    color: #e8eaf0 !important;
     font-family: 'DM Mono', monospace !important;
     font-size: 13px !important;
     background-color: transparent !important;
 }
 
 [data-baseweb="menu"] li:hover,
+[data-baseweb="menu"] li:hover span,
 div[role="listbox"] li:hover,
-[data-baseweb="menu"] li[aria-selected="true"] {
+div[role="listbox"] li:hover span,
+[data-baseweb="menu"] li[aria-selected="true"],
+[data-baseweb="menu"] li[aria-selected="true"] span {
     background-color: rgba(0, 229, 160, 0.1) !important;
-    color: var(--accent) !important;
+    color: #00e5a0 !important;
 }
 
+/* ── Aggressive File Uploader Overrides ── */
+[data-testid="stFileUploadDropzone"] {
+    background-color: #1a1d27 !important;
+}
+
+/* Forces the "Drag and drop file here" text to be visible */
+[data-testid="stFileUploadDropzone"] div,
+[data-testid="stFileUploadDropzone"] p,
+[data-testid="stFileUploadDropzone"] span {
+    color: #e8eaf0 !important;
+    font-family: 'DM Mono', monospace !important;
+}
+
+/* Forces the "Limit 200MB" text to be muted */
+[data-testid="stFileUploadDropzone"] small,
+[data-testid="stFileUploadDropzone"] small * {
+    color: #6b7280 !important;
+}
+
+/* Ensures the "Browse files" button remains readable */
+[data-testid="stFileUploadDropzone"] button {
+    background: #1f2335 !important;
+    color: #e8eaf0 !important;
+    border: 1px solid #252a3a !important;
+}
+
+[data-testid="stFileUploadDropzone"] button:hover {
+    border-color: #00e5a0 !important;
+    color: #00e5a0 !important;
+}
 /* ── Aggressive File Uploader Overrides ── */
 [data-testid="stFileUploadDropzone"] {
     background-color: var(--surface) !important;
