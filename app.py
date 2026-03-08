@@ -207,6 +207,52 @@ label { color: var(--muted) !important; font-size: 12px !important; }
     border-radius: 10px !important; transition: border-color 0.2s;
 }
 [data-testid="stFileUploader"]:hover { border-color: var(--accent) !important; }
+/* all text inside the uploader zone */
+[data-testid="stFileUploaderDropzone"] * { color: var(--text) !important; }
+[data-testid="stFileUploaderDropzoneInstructions"] span { color: var(--muted) !important; }
+[data-testid="stFileUploader"] button {
+    color: var(--accent) !important;
+    border-color: rgba(0,229,160,0.4) !important;
+    background: transparent !important;
+}
+[data-testid="stFileUploader"] small,
+[data-testid="stFileUploader"] span { color: var(--muted) !important; }
+
+/* ── Dropdown popover / option list — WHITE BOX FIX ── */
+[data-baseweb="popover"],
+[data-baseweb="popover"] > div,
+[data-baseweb="menu"],
+[data-baseweb="menu"] ul,
+ul[data-baseweb="menu"] {
+    background: var(--surface2) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+}
+[data-baseweb="menu"] li,
+[data-baseweb="option"],
+[role="option"] {
+    background: var(--surface2) !important;
+    color: var(--text) !important;
+    font-family: 'DM Mono', monospace !important;
+    font-size: 13px !important;
+}
+[data-baseweb="menu"] li:hover,
+[data-baseweb="option"]:hover,
+[role="option"]:hover {
+    background: var(--border) !important;
+    color: var(--accent) !important;
+}
+[aria-selected="true"][role="option"],
+[data-baseweb="menu"] li[aria-selected="true"] {
+    background: rgba(0,229,160,0.1) !important;
+    color: var(--accent) !important;
+}
+[data-baseweb="select"] span,
+[data-baseweb="select"] input,
+[data-baseweb="select"] div span {
+    color: var(--text) !important;
+    font-family: 'DM Mono', monospace !important;
+}
 
 /* ── Dataframe ── */
 [data-testid="stDataFrame"] {
@@ -235,59 +281,26 @@ label { color: var(--muted) !important; font-size: 12px !important; }
 }
 
 /* ── Inputs & selects ── */
-/* ── Aggressive Dropdown Menu (Popover) Overrides ── */
-[data-baseweb="popover"],
-[data-baseweb="menu"],
-div[role="listbox"],
-ul[role="listbox"] {
-    background-color: var(--surface) !important;
-    border: 1px solid var(--border) !important;
-}
-
-[data-baseweb="menu"] li,
-div[role="listbox"] li,
-ul[role="listbox"] li {
+[data-baseweb="select"] > div,
+[data-baseweb="input"] > div,
+[data-testid="stSelectbox"] > div,
+[data-testid="stNumberInput"] > div {
+    border-color: var(--border) !important;
+    background: var(--surface) !important;
     color: var(--text) !important;
+    border-radius: 6px !important;
     font-family: 'DM Mono', monospace !important;
     font-size: 13px !important;
-    background-color: transparent !important;
 }
-
-[data-baseweb="menu"] li:hover,
-div[role="listbox"] li:hover,
-[data-baseweb="menu"] li[aria-selected="true"] {
-    background-color: rgba(0, 229, 160, 0.1) !important;
-    color: var(--accent) !important;
-}
-
-/* ── Aggressive File Uploader Overrides ── */
-[data-testid="stFileUploadDropzone"] {
-    background-color: var(--surface) !important;
-}
-
-/* Forces the "Drag and drop file here" text to be visible */
-[data-testid="stFileUploadDropzone"] [data-testid="stMarkdownContainer"] p,
-[data-testid="stFileUploadDropzone"] span {
-    color: var(--text) !important;
-    font-family: 'DM Mono', monospace !important;
-}
-
-/* Forces the "Limit 200MB" text to be muted */
-[data-testid="stFileUploadDropzone"] small,
-[data-testid="stFileUploadDropzone"] div[data-testid="stText"] {
-    color: var(--muted) !important;
-}
-
-/* Ensures the "Browse files" button remains readable */
-[data-testid="stFileUploadDropzone"] button {
-    background: var(--surface2) !important;
-    color: var(--text) !important;
-    border: 1px solid var(--border) !important;
-}
-
-[data-testid="stFileUploadDropzone"] button:hover {
+[data-baseweb="select"] > div:focus-within,
+[data-baseweb="input"] > div:focus-within {
     border-color: var(--accent) !important;
-    color: var(--accent) !important;
+    box-shadow: 0 0 0 2px rgba(0,229,160,0.12) !important;
+}
+input[type="number"], input[type="text"], input[type="password"] {
+    background: var(--surface) !important; color: var(--text) !important;
+    border-color: var(--border) !important;
+    font-family: 'DM Mono', monospace !important;
 }
 
 /* ── Slider ── */
@@ -338,7 +351,7 @@ PLOT_BG    = "#1a1d27"
 PAPER_BG   = "rgba(0,0,0,0)"
 GRID_COLOR = "#252a3a"
 FONT_COLOR = "#6b7280"
-TEXT_COLOR = "#e2df3f"
+TEXT_COLOR = "#e8eaf0"
 
 
 # ============================================
@@ -660,8 +673,10 @@ def predict_and_explain(model, preprocessor, label_encoder, feature_names, input
     # Add any missing engineered features
     input_df = add_engineered_features(input_df)
 
-    # Filter and enforce the exact column order expected by the preprocessor
-    expected = list(preprocessor.feature_names_in_)
+    # Only pass columns the preprocessor was trained on
+    expected = [c for c in input_df.columns if c in
+                (preprocessor.transformers_[0][2] +
+                 (preprocessor.transformers_[1][2] if len(preprocessor.transformers_) > 1 else []))]
     input_df = input_df[expected]
 
     X_proc    = preprocessor.transform(input_df)
@@ -670,7 +685,6 @@ def predict_and_explain(model, preprocessor, label_encoder, feature_names, input
     explainer = get_explainer(model)
     X_tuple   = tuple(X_proc[0].tolist())
     impact_df = compute_shap(explainer, X_tuple, feature_names, int(pred[0]))
-    
     return label, impact_df
 
 
