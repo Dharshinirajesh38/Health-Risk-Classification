@@ -1,207 +1,101 @@
 # 🏥 Healthcare Risk Classification System
 
-## 📌 Project Overview
+A machine-learning web app that predicts a patient's health risk level (**LOW / MEDIUM / HIGH / CRITICAL**) from clinical and lifestyle data, and explains each prediction with SHAP.
 
-The **Healthcare Risk Classification System** is a machine learning–based application that predicts the **health risk level of patients** based on clinical and lifestyle data.
+> ⚠️ **Educational project, not a medical device.** It is trained on a synthetic dataset and must not be used for real diagnosis or treatment decisions. Recommendations shown are simple rule-based suggestions.
 
-The system analyzes health parameters such as **Age, BMI, Blood Pressure, Cholesterol, HbA1c, Smoking Habits, Physical Activity, and Family Medical History** to classify patients into four risk categories:
+## Features
 
-* LOW
-* MEDIUM
-* HIGH
-* CRITICAL
+- Streamlit app with login, dashboard, patient lookup and manual assessment
+- Automatic data cleaning (column renaming, label standardisation, missing values, duplicates, outlier clipping)
+- Feature engineering: MAP, BMI-Age index, metabolic risk score, activity score, sleep quality
+- Random Forest classifier (compared against a Logistic Regression baseline)
+- Explainable AI: SHAP shows which factors push risk **higher** (orange) or **lower** (green)
+- PDF report download per patient
 
-This project demonstrates how **Machine Learning and Data Analytics can assist in early healthcare risk prediction and clinical decision-making.**
+## Model
 
----
+| Step | Detail |
+|---|---|
+| Split | 80/20 stratified, `random_state=42` |
+| Preprocessing | StandardScaler (numeric) + OneHotEncoder (categorical), **fit on training data only** |
+| Models compared | Logistic Regression vs Random Forest (200 trees, balanced class weights) |
+| Validation | 5-fold stratified cross-validation |
+| Explainability | SHAP `TreeExplainer`, impact measured on risk severity (LOW=0 … CRITICAL=3) |
 
-# 🚀 Features
+### Results
 
-* Patient health risk prediction using Machine Learning
-* Interactive web application built using **Streamlit**
-* Automated **data preprocessing and feature engineering**
-* Random Forest machine learning model
-* Explainable AI using **SHAP** for model interpretation
-* Patient database search and diagnostic system
-* Interactive healthcare dashboard with visualizations
-* Automatic **PDF patient risk report generation**
+Run `python train_model.py` and copy the printed values here (also saved in `models/metrics.json`):
 
----
+| Model | Test accuracy | Macro F1 | CV accuracy (mean ± std) |
+|---|---|---|---|
+| Logistic Regression | _fill in_ | _fill in_ | _fill in_ |
+| Random Forest | _fill in_ | _fill in_ | _fill in_ |
 
-# 🧠 Machine Learning Model
+### Limitations
 
-The system uses a **Random Forest Classifier** to predict patient risk levels.
+- The dataset is **synthetic and perfectly balanced** (250 records per class); the engineered features show little separation between classes, so results will not transfer to real patients.
+- `Activity_Score` and `Metabolic_Risk_Score` use assumed formulas, not clinical standards.
+- Labels may not follow real clinical definitions; no external validation was performed.
+- For a clinical use, the cost of predicting LOW for a CRITICAL patient is high, so per-class recall matters more than overall accuracy.
 
-### Model Workflow
-
-1. Data Cleaning and Preprocessing
-2. Feature Engineering
-3. Feature Scaling and Encoding
-4. Model Training using Random Forest
-5. Risk Prediction
-6. Explainable AI using SHAP
-
----
-
-# 📊 Dataset Features
-
-The dataset contains multiple clinical and lifestyle attributes including:
-
-* Age
-* Gender
-* BMI
-* Systolic Blood Pressure
-* Diastolic Blood Pressure
-* Cholesterol Level
-* HbA1c Percentage
-* Smoking Status
-* Alcohol Consumption
-* Physical Activity
-* Sleep Hours
-* Heart Rate
-* Daily Steps
-* Family History of Diabetes
-* Family History of Heart Disease
-
-Target Variable:
-
-**Risk_Category**
-
-* LOW
-* MEDIUM
-* HIGH
-* CRITICAL
-
----
-
-# 🖥 Application Modules
-
-## 1️⃣ Dashboard
-
-Provides population-level healthcare insights such as:
-
-* Risk distribution visualization
-* Age vs BMI analysis
-* Metabolic risk score analysis
-* Lifestyle risk correlations
-
----
-
-## 2️⃣ Patient Database
-
-Allows users to:
-
-* Search patients using Patient ID
-* Run AI-based diagnostic predictions
-* View explainable AI insights
-* Download patient risk reports
-
----
-
-## 3️⃣ Clinical Assessment
-
-Users can manually enter patient health information and the system will:
-
-* Predict the patient risk level
-* Show the most influential health factors
-* Generate a clinical assessment report
-
----
-
-# 🛠 Technologies Used
-
-* Python
-* Streamlit
-* Pandas
-* NumPy
-* Scikit-learn
-* SHAP
-* Plotly
-* Matplotlib
-* Joblib
-* ReportLab
-
----
-
-# 📂 Project Structure
+## Project Structure
 
 ```
-Healthcare-Risk-Classification
-│
-├── app.py
-├── train_model.py
+Health-Risk-Classification/
+├── app.py                  # Streamlit application
+├── train_model.py          # Trains and saves the model
 ├── requirements.txt
 ├── README.md
-│
-├── data
+├── data/
 │   └── Healthcare_Risk_Classification_Dataset_Balanced.csv
-│
-├── models
+├── models/                 # created by train_model.py
 │   ├── rf_model.pkl
 │   ├── preprocessor.pkl
 │   ├── label_encoder.pkl
-│   └── feature_names.pkl
-│
-└── reports
-    └── patient_report.pdf
+│   ├── feature_names.pkl
+│   └── metrics.json
+└── screenshots/            # add your app screenshots here
 ```
 
----
+## Run Locally
 
-# ▶️ How to Run the Project
-
-### 1️⃣ Clone the Repository
-
-```
-git clone https://github.com/your-username/healthcare-risk-classification.git
-```
-
----
-
-### 2️⃣ Install Required Libraries
-
-```
+```bash
+git clone https://github.com/Dharshinirajesh38/Health-Risk-Classification.git
+cd Health-Risk-Classification
+python -m venv .venv
+.venv\Scripts\activate          # Windows PowerShell:  .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-```
-
----
-
-### 3️⃣ Train the Machine Learning Model
-
-```
 python train_model.py
-```
-
----
-
-### 4️⃣ Run the Streamlit Application
-
-```
 streamlit run app.py
 ```
 
----
+Open http://localhost:8501. The demo login is set in `.streamlit/secrets.toml`:
 
-# 📈 Model Performance
+```toml
+password = "choose-your-own-password"
+```
 
-The trained machine learning model achieves approximately **95% prediction accuracy** in classifying patient health risk levels.
+## Screenshots
 
----
+Add images from the `screenshots/` folder, for example:
 
-# 💡 Future Improvements
+```
+![Dashboard](screenshots/dashboard.png)
+![SHAP explanation](screenshots/shap.png)
+```
 
-* Integration with real hospital Electronic Health Records (EHR)
-* Real-time patient monitoring system
-* Cloud deployment for scalability
-* Mobile-friendly healthcare dashboard
-* Integration with wearable health devices
+## Tech Stack
 
----
+Python · Streamlit · Pandas · NumPy · scikit-learn · SHAP · Plotly · Matplotlib · Joblib · ReportLab
 
-# 👩‍💻 Author
+## Future Work
 
-**Dharshini**
+- Validate on real, de-identified clinical data
+- Probability calibration and per-class threshold tuning
+- EHR integration and cloud deployment
+- Automated tests and CI
 
----
+## Author
 
-⭐ If you found this project helpful, feel free to **star this repository!**
+**Dharshini** · [GitHub](https://github.com/Dharshinirajesh38) · [LinkedIn](https://linkedin.com/in/dharshini236)
