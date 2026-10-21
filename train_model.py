@@ -102,7 +102,9 @@ preprocessor = make_preprocessor()
 X_train_p = preprocessor.fit_transform(X_train)
 X_test_p = preprocessor.transform(X_test)
 
-rf = models["Random Forest"]
+best_name = max(results, key=lambda n: results[n]["cv_mean_accuracy"])
+print("\nFinal model (best CV accuracy):", best_name)
+rf = models[best_name]
 rf.fit(X_train_p, y_train)
 y_pred = rf.predict(X_test_p)
 
@@ -110,18 +112,22 @@ cat_out = (preprocessor.named_transformers_["cat"]
            .get_feature_names_out(cat_feats).tolist() if cat_feats else [])
 feature_names = num_feats + cat_out
 
-print("\n========== RANDOM FOREST - TEST REPORT ==========")
+print(f"\n========== {best_name.upper()} - TEST REPORT ==========")
 print(classification_report(y_test, y_pred, target_names=le.classes_))
 cm = confusion_matrix(y_test, y_pred)
 print("Confusion matrix (rows=true, cols=pred), classes:", list(le.classes_))
 print(cm)
 
-top = sorted(zip(feature_names, rf.feature_importances_), key=lambda t: -t[1])[:8]
+imp = getattr(rf, "feature_importances_", None)
+if imp is None:
+    imp = np.abs(rf.coef_).mean(axis=0)
+top = sorted(zip(feature_names, imp), key=lambda t: -t[1])[:8]
 print("\nTop features:", [(n, round(float(v), 3)) for n, v in top])
 
 
 # ---------- 6. Save (file names match app.py) ----------
-joblib.dump(rf, f"{MODEL_DIR}/rf_model.pkl")
+rf.background_ = X_train_p[:100]          # used by SHAP LinearExplainer in app.py
+joblib.dump(rf, f"{MODEL_DIR}/rf_model.pkl")   # file name kept so app.py needs no change
 joblib.dump(preprocessor, f"{MODEL_DIR}/preprocessor.pkl")
 joblib.dump(le, f"{MODEL_DIR}/label_encoder.pkl")
 joblib.dump(feature_names, f"{MODEL_DIR}/feature_names.pkl")
@@ -129,6 +135,7 @@ joblib.dump(feature_names, f"{MODEL_DIR}/feature_names.pkl")
 with open(f"{MODEL_DIR}/metrics.json", "w") as f:
     json.dump({
         "comparison": results,
+        "final_model": best_name,
         "classes": list(le.classes_),
         "confusion_matrix": cm.tolist(),
         "classification_report": classification_report(

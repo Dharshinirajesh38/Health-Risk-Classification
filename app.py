@@ -14,7 +14,7 @@ import io, os, json, hmac, hashlib
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
@@ -90,6 +90,17 @@ input[type="number"],input[type="text"],input[type="password"]{background:var(--
 hr{border:none!important;border-top:1px solid var(--border)!important;margin:22px 0!important;}
 [data-testid="stCaptionContainer"]{color:var(--muted)!important;font-family:'DM Mono',monospace!important;font-size:11px!important;}
 [data-testid="stCode"]{background:var(--surface2)!important;border:1px solid var(--border)!important;border-radius:6px!important;font-family:'DM Mono',monospace!important;}
+.ref-table{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:12px;margin-bottom:8px;}
+.ref-table th{color:var(--muted)!important;text-align:left!important;padding:8px 10px;border-bottom:1px solid var(--border);font-weight:500;letter-spacing:.06em;}
+.ref-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text);}
+.ref-table tr:hover td{background:var(--surface2);}
+[data-testid="stRadio"] [role="radiogroup"]{gap:0!important;border-bottom:1px solid var(--border);}
+[data-testid="stRadioOption"]{padding:10px 20px!important;margin:0!important;border-bottom:2px solid transparent;cursor:pointer;}
+[data-testid="stRadioOption"]>div>div:first-child{display:none!important;}
+[data-testid="stRadioOption"] p{font-family:'DM Mono',monospace!important;font-weight:500!important;font-size:12px!important;letter-spacing:.08em!important;color:var(--muted)!important;}
+[data-testid="stRadioOption"]:hover p{color:var(--text)!important;}
+[data-testid="stRadioOption"][data-selected="true"]{border-bottom:2px solid var(--accent);}
+[data-testid="stRadioOption"][data-selected="true"] p{color:var(--accent)!important;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -101,6 +112,7 @@ GRID_COLOR = "#252a3a"
 FONT_COLOR = "#6b7280"
 TEXT_COLOR = "#e8eaf0"
 DISCLAIMER = "Educational project using synthetic data. Not a medical device. Not medical advice."
+
 
 
 # ============================================
@@ -144,7 +156,7 @@ def login():
                 st.error("Invalid credentials.")
         if _get_password() is None:
             st.warning("No password configured. Create .streamlit/secrets.toml with:  password = \"your-password\"")
-        st.caption(DISCLAIMER)
+      
 
 if "logged_in" not in st.session_state or not st.session_state["logged_in"]:
     login()
@@ -181,7 +193,9 @@ st.markdown("""
     </div>
 </div>
 """, unsafe_allow_html=True)
-st.caption("⚠️ " + DISCLAIMER)
+
+
+
 
 
 # ============================================
@@ -393,9 +407,9 @@ def train_model_cached(df_hash: str, df_json: str):
                if cat_feats else [])
     feature_names = num_feats + cat_out
 
-    model = RandomForestClassifier(n_estimators=200, class_weight="balanced",
-                                   random_state=42, n_jobs=-1, max_depth=15)
+    model = LogisticRegression(max_iter=2000)
     model.fit(X_train_p, y_train)
+    model.background_ = X_train_p[:100]
 
     pred   = model.predict(X_test_p)
     acc    = accuracy_score(y_test, pred)
@@ -407,7 +421,9 @@ def train_model_cached(df_hash: str, df_json: str):
 # CACHED: SHAP  (explains RISK SEVERITY: + = higher risk, - = lower risk)
 # ============================================
 @st.cache_resource(show_spinner=False)
-def get_explainer(_model):
+def get_explainer(model_id, _model):
+    if hasattr(_model, "coef_"):      # linear model (Logistic Regression)
+        return shap.LinearExplainer(_model, _model.background_)
     return shap.TreeExplainer(_model)
 
 @st.cache_data(show_spinner=False)
@@ -434,7 +450,7 @@ def predict_and_explain(model, preprocessor, label_encoder, feature_names, input
     pred   = model.predict(X_proc)
     label  = label_encoder.inverse_transform(pred)[0].upper()
     severity = tuple(SEVERITY[c.upper()] for c in label_encoder.classes_)
-    impact_df = compute_shap(get_explainer(model), tuple(X_proc[0].tolist()),
+    impact_df = compute_shap(get_explainer(id(model), model), tuple(X_proc[0].tolist()),
                              list(feature_names), severity)
     return label, impact_df
 
@@ -539,13 +555,85 @@ if not st.session_state["model_trained"]:
 # ============================================
 # TABS
 # ============================================
-tab_dash, tab_db, tab_manual = st.tabs(["📊  DASHBOARD", "🗄️  PATIENT DB", "✍️  ASSESSMENT"])
+# ============================================
+# REFERENCE RANGES (normal vs abnormal, by gender)
+# ============================================
+def reference_table(gender, v):
+    N, B, A = "🟢 Normal", "🟡 Borderline", "🔴 Abnormal"
+    male = gender == "Male"
+    alc_n, alc_b = (14, 21) if male else (7, 14)
+
+    def band(x, cuts, labels):
+        for c, lab in zip(cuts, labels):
+            if x < c:
+                return lab
+        return labels[-1]
+
+    smoke = {"Non-Smoker": N, "Former Smoker": B, "Current Smoker": A}[v["smoking"]]
+    rows = [
+        ("BMI (kg/m²)", f"{v['bmi']:.1f}", "18.5 – 24.9", "25 – 29.9", "< 18.5 or ≥ 30",
+         band(v["bmi"], [18.5, 25, 30], [A, N, B, A])),
+        ("Systolic BP (mmHg)", f"{v['sbp']}", "< 120", "120 – 139", "≥ 140",
+         band(v["sbp"], [120, 140], [N, B, A])),
+        ("Diastolic BP (mmHg)", f"{v['dbp']}", "< 80", "80 – 89", "≥ 90",
+         band(v["dbp"], [80, 90], [N, B, A])),
+        ("Cholesterol (mg/dL)", f"{v['chol']}", "< 200", "200 – 239", "≥ 240",
+         band(v["chol"], [200, 240], [N, B, A])),
+        ("HbA1c (%)", f"{v['hba1c']:.2f}", "< 5.7", "5.7 – 6.4", "≥ 6.5",
+         band(v["hba1c"], [5.7, 6.5], [N, B, A])),
+        ("Heart rate (bpm)", f"{v['hr']}", "60 – 100", "50 – 59 or 101 – 110", "< 50 or > 110",
+         band(v["hr"], [50, 60, 101, 111], [A, B, N, B, A])),
+        ("Sleep (hrs/night)", f"{v['sleep']:.1f}", "7 – 9", "6 – 6.9 or > 9", "< 6",
+         band(v["sleep"], [6, 7, 9.05], [A, B, N, B])),
+        ("Activity (hrs/week)", f"{v['activity']:.1f}", "≥ 2.5", "1 – 2.4", "< 1",
+         band(v["activity"], [1, 2.5], [A, B, N])),
+        ("Daily steps", f"{v['steps']:,}", "≥ 7,000", "5,000 – 6,999", "< 5,000",
+         band(v["steps"], [5000, 7000], [A, B, N])),
+        (f"Alcohol (drinks/week) — {gender.lower()}", f"{v['alcohol']}", f"≤ {alc_n}",
+         f"{alc_n + 1} – {alc_b}", f"> {alc_b}",
+         band(v["alcohol"], [alc_n + 1, alc_b + 1], [N, B, A])),
+        ("Smoking", v["smoking"], "Non-smoker", "Former smoker", "Current smoker", smoke),
+        ("Family hx diabetes", "Yes" if v["fam_d"] else "No", "No", "Yes (risk factor)", "—",
+         B if v["fam_d"] else N),
+        ("Family hx heart disease", "Yes" if v["fam_h"] else "No", "No", "Yes (risk factor)", "—",
+         B if v["fam_h"] else N),
+    ]
+    return pd.DataFrame(rows, columns=["Parameter", "Your value", "Normal", "Borderline", "Abnormal", "Status"])
+
+
+def render_reference_panel(gender, v):
+    ref = reference_table(gender, v)
+    n_abn = int(ref["Status"].str.contains("Abnormal").sum())
+    n_bor = int(ref["Status"].str.contains("Borderline").sum())
+    with st.expander(f"📏 normal vs abnormal ranges — {gender.lower()} (your entries are flagged live)", expanded=True):
+        html = ref.to_html(index=False, classes="ref-table", border=0, escape=True)
+        st.markdown("".join(l.strip() for l in html.splitlines()), unsafe_allow_html=True)
+        st.caption(f"{n_abn} abnormal · {n_bor} borderline · {len(ref) - n_abn - n_bor} normal")
+        st.caption("General adult reference ranges: WHO (BMI, activity), ACC/AHA (blood pressure), ADA (HbA1c), "
+                   "ATP III (cholesterol), NIAAA (alcohol). Most ranges are the same for men and women; "
+                   "alcohol limits differ. For Asian populations BMI ≥ 23 is often treated as overweight. "
+                   "Not a diagnosis.")
+
+
+# ============================================
+# PAGE NAVIGATION (styled like tabs; the Next button moves to the following page)
+# ============================================
+PAGES = ["📊  DASHBOARD", "🗄️  PATIENT DB", "✍️  ASSESSMENT"]
+if st.session_state.get("page") not in PAGES:
+    st.session_state["page"] = PAGES[0]
+
+def go_next():
+    i = PAGES.index(st.session_state["page"])
+    st.session_state["page"] = PAGES[min(i + 1, len(PAGES) - 1)]
+
+st.radio("page", PAGES, key="page", horizontal=True, label_visibility="collapsed")
+page = st.session_state["page"]
 
 
 # ==========================================
 # TAB 1 — DASHBOARD
 # ==========================================
-with tab_dash:
+if page == PAGES[0]:
     st.markdown("<div class='section-title'>📂 Upload Patient Dataset</div>", unsafe_allow_html=True)
     st.caption("upload raw csv or excel — auto-cleaned, feature-engineered, model retrained")
 
@@ -688,7 +776,7 @@ with tab_dash:
 # ==========================================
 # TAB 2 — PATIENT DATABASE
 # ==========================================
-with tab_db:
+if page == PAGES[1]:
     df            = st.session_state.get("df")
     model         = st.session_state.get("model")
     preprocessor  = st.session_state.get("preprocessor")
@@ -764,7 +852,7 @@ with tab_db:
 # ==========================================
 # TAB 3 — CLINICAL ASSESSMENT
 # ==========================================
-with tab_manual:
+if page == PAGES[2]:
     model         = st.session_state.get("model")
     preprocessor  = st.session_state.get("preprocessor")
     label_encoder = st.session_state.get("label_encoder")
@@ -797,6 +885,11 @@ with tab_manual:
             sleep           = st.slider("Sleep hrs/night", 3.0, 10.0, 7.0)
             family_diabetes = st.selectbox("Family Hx Diabetes", [0, 1])
             family_heart    = st.selectbox("Family Hx Heart Disease", [0, 1])
+
+        render_reference_panel(gender, dict(
+            bmi=bmi, sbp=systolic_bp, dbp=diastolic_bp, chol=cholesterol, hba1c=hba1c,
+            hr=heart_rate, sleep=sleep, activity=activity, steps=steps, alcohol=alcohol,
+            smoking=smoking, fam_d=family_diabetes, fam_h=family_heart))
 
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🧬  Evaluate Patient", use_container_width=True):
@@ -847,6 +940,10 @@ with tab_manual:
 # LOGOUT
 # ============================================
 st.markdown("<br><hr>", unsafe_allow_html=True)
-_, col_logout = st.columns([9, 1])
-with col_logout:
-    st.button("exit", on_click=lambda: st.session_state.update(logged_in=False))
+_, col_nav = st.columns([9, 1.3])
+with col_nav:
+    if page != PAGES[-1]:
+        st.button("next  →", on_click=go_next, key="next_btn")
+    else:
+        st.button("exit", key="exit_btn",
+                  on_click=lambda: st.session_state.update(logged_in=False, page=PAGES[0]))

@@ -9,7 +9,7 @@ A machine-learning web app that predicts a patient's health risk level (**LOW / 
 - Streamlit app with login, dashboard, patient lookup and manual assessment
 - Automatic data cleaning (column renaming, label standardisation, missing values, duplicates, outlier clipping)
 - Feature engineering: MAP, BMI-Age index, metabolic risk score, activity score, sleep quality
-- Random Forest classifier (compared against a Logistic Regression baseline)
+- Logistic Regression classifier, selected over a Random Forest by cross-validation
 - Explainable AI: SHAP shows which factors push risk **higher** (orange) or **lower** (green)
 - PDF report download per patient
 
@@ -21,7 +21,7 @@ A machine-learning web app that predicts a patient's health risk level (**LOW / 
 | Preprocessing | StandardScaler (numeric) + OneHotEncoder (categorical), **fit on training data only** |
 | Models compared | Logistic Regression vs Random Forest (200 trees, balanced class weights) |
 | Validation | 5-fold stratified cross-validation |
-| Explainability | SHAP `TreeExplainer`, impact measured on risk severity (LOW=0 … CRITICAL=3) |
+| Explainability | SHAP `LinearExplainer`, impact measured on risk severity (LOW=0 … CRITICAL=3) |
 
 ### Results
 
@@ -29,8 +29,10 @@ Run `python train_model.py` and copy the printed values here (also saved in `mod
 
 | Model | Test accuracy | Macro F1 | CV accuracy (mean ± std) |
 |---|---|---|---|
-| Logistic Regression | _fill in_ | _fill in_ | _fill in_ |
-| Random Forest | _fill in_ | _fill in_ | _fill in_ |
+| **Logistic Regression (final)** | **0.95** | **0.95** | **0.933 ± 0.025** |
+| Random Forest | 0.66 | 0.65 | 0.660 ± 0.014 |
+
+Logistic Regression clearly beat Random Forest (95% vs 66%), which suggests the synthetic labels follow a mostly linear rule of the input features. The model with the best cross-validation accuracy is saved automatically.
 
 ### Limitations
 
