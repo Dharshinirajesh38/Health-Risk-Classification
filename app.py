@@ -1,6 +1,6 @@
 # ============================================
 # Healthcare Risk Classification - Streamlit App
-# Educational project (synthetic data) - not a medical device
+# Educational project - not a medical device
 # ============================================
 
 import streamlit as st
